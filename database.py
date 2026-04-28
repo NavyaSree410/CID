@@ -1,12 +1,12 @@
 import sqlite3
 import bcrypt
 
-DB_NAME = "complaints.db"
+DB = "complaints.db"
 
 
-# ---------------- CREATE DB ----------------
+# ---------------- DB INIT ----------------
 def create_db():
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     c.execute('''CREATE TABLE IF NOT EXISTS users (
@@ -32,32 +32,35 @@ def create_db():
     conn.close()
 
 
-# ---------------- PASSWORD HASH ----------------
-def hash_password(password):
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode("utf-8")
+# ---------------- PASSWORD ----------------
+def hash_password(pw):
+    return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode("utf-8")
 
 
-def check_password(password, hashed):
-    return bcrypt.checkpw(password.encode(), hashed.encode("utf-8"))
+def check_password(pw, hashed):
+    return bcrypt.checkpw(pw.encode(), hashed.encode("utf-8"))
 
 
-# ---------------- USER ----------------
+# ---------------- USER SYSTEM (FIXED) ----------------
 def add_user(username, password, role):
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     try:
         c.execute("INSERT INTO users VALUES (?, ?, ?)",
                   (username, hash_password(password), role))
         conn.commit()
-    except:
-        pass
+        return "SUCCESS"
 
-    conn.close()
+    except sqlite3.IntegrityError:
+        return "USER_EXISTS"
+
+    finally:
+        conn.close()
 
 
 def validate_user(username, password):
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     c.execute("SELECT * FROM users WHERE username=?", (username,))
