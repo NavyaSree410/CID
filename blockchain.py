@@ -5,22 +5,18 @@ from datetime import datetime
 chain = []
 
 
-def create_hash(data, prev_hash):
-    block = str(data) + str(prev_hash) + str(datetime.now())
-    return hashlib.sha256(block.encode()).hexdigest()
-
-
 def add_block(data):
-    prev_hash = chain[-1]["hash"] if chain else "0"
+    prev = chain[-1]["hash"] if chain else "0"
+
+    raw = json.dumps(data) + prev + str(datetime.now())
+    h = hashlib.sha256(raw.encode()).hexdigest()
 
     block = {
         "data": data,
-        "timestamp": str(datetime.now()),
-        "prev_hash": prev_hash,
-        "hash": ""
+        "prev_hash": prev,
+        "hash": h,
+        "time": str(datetime.now())
     }
-
-    block["hash"] = create_hash(data, prev_hash)
 
     chain.append(block)
     return block
