@@ -30,30 +30,39 @@ if "user" not in st.session_state:
     st.session_state.role = None
 
 
-# ---------------- LOGIN ----------------
-def login():
+# ---------------- AUTH UI (FIXED) ----------------
+def auth():
     st.title("🔐 C3IS Cyber Crime System")
 
-    u = st.text_input("Username")
-    p = st.text_input("Password", type="password")
+    mode = st.radio("Choose Action", ["Login", "Register"])
+
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
     role = st.selectbox("Role", ["user", "admin"])
 
-    if st.button("Login"):
-        user = validate_user(u, p)
-        if user:
-            st.session_state.user = u
-            st.session_state.role = role
-            st.success("Login Successful")
-            st.rerun()
-        else:
-            st.error("Invalid credentials")
+    if mode == "Register":
+        if st.button("Register"):
+            result = add_user(username, password, role)
 
-    if st.button("Register"):
-        add_user(u, p, role)
-        st.success("User Registered")
+            if result == "SUCCESS":
+                st.success("User Registered Successfully")
+            else:
+                st.error("Username already exists")
+
+    if mode == "Login":
+        if st.button("Login"):
+            user = validate_user(username, password)
+
+            if user:
+                st.session_state.user = username
+                st.session_state.role = role
+                st.success("Login Successful")
+                st.rerun()
+            else:
+                st.error("Invalid Credentials")
 
 
-# ---------------- USER PANEL ----------------
+# ---------------- USER ----------------
 def user_panel():
     st.header("📢 Submit Complaint")
 
@@ -69,7 +78,7 @@ def user_panel():
         "Fake Job Scam"
     ])
 
-    if st.button("Submit Complaint"):
+    if st.button("Submit"):
         cid = generate_complaint_id()
         priority = detect_priority(fraud_type)
         jurisdiction = detect_jurisdiction(desc)
@@ -85,10 +94,10 @@ def user_panel():
         conn.commit()
         conn.close()
 
-        st.success(f"Complaint Submitted: {cid}")
+        st.success(f"Complaint Registered: {cid}")
 
 
-# ---------------- ADMIN PANEL ----------------
+# ---------------- ADMIN ----------------
 def admin_panel():
     st.header("🛡 Intelligence Dashboard")
 
@@ -97,15 +106,15 @@ def admin_panel():
 
     st.metric("Total Cases", len(df))
     st.metric("High Risk", len(df[df["priority"] == "HIGH"]))
-    st.metric("International Cases", len(df[df["jurisdiction"].str.contains("INTERNATIONAL")]))
+    st.metric("International", len(df[df["jurisdiction"].str.contains("INTERNATIONAL")]))
 
-    st.subheader("Fraud Types")
+    st.subheader("Fraud Analysis")
     st.plotly_chart(px.histogram(df, x="fraud_type", color="priority"))
 
-    st.subheader("Locations")
+    st.subheader("Location Insights")
     st.plotly_chart(px.bar(df, x="location", color="fraud_type"))
 
-    st.subheader("Jurisdiction Split")
+    st.subheader("Jurisdiction Distribution")
     st.plotly_chart(px.pie(df, names="jurisdiction"))
 
     st.subheader("Case Status Update")
@@ -126,14 +135,14 @@ def admin_panel():
         if not df.empty:
             case = df.iloc[0].to_dict()
             file = generate_mlat(case)
-            st.success(f"MLAT Generated: {file}")
+            st.success(f"MLAT Created: {file}")
 
 
 # ---------------- ROUTER ----------------
 if st.session_state.user is None:
-    login()
+    auth()
 else:
-    st.sidebar.write(f"User: {st.session_state.user}")
+    st.sidebar.write(f"Logged in as: {st.session_state.user}")
 
     if st.sidebar.button("Logout"):
         st.session_state.user = None
