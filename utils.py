@@ -2,26 +2,26 @@ import random
 
 HIGH_RISK = ["OTP Fraud", "Banking Fraud", "Crypto Scam"]
 
-FOREIGN_SIGNS = [
-    "gmail.com", "facebook.com", "instagram.com",
-    "telegram", "binance", "bitcoin", "paypal",
-    "cloudflare", "amazon", "apple id"
-]
-
-
-def generate_complaint_id():
+def generate_id():
     return f"CRIME-2026-{random.randint(1000,9999)}"
 
 
-def detect_priority(fraud_type):
-    return "HIGH" if fraud_type in HIGH_RISK else "MEDIUM"
+def priority(fraud):
+    return "HIGH" if fraud in HIGH_RISK else "MEDIUM"
 
 
-def detect_jurisdiction(text):
-    text = text.lower()
+# SIMPLE SIMILARITY LINKING ENGINE
+def similarity_score(a, b):
+    a, b = a.lower(), b.lower()
+    return len(set(a.split()) & set(b.split()))
 
-    for i in FOREIGN_SIGNS:
-        if i in text:
-            return "INTERNATIONAL (MLAT REQUIRED)"
 
-    return "LOCAL CASE"
+def find_similar(existing_cases, new_desc):
+    linked = []
+
+    for case in existing_cases:
+        score = similarity_score(case["description"], new_desc)
+        if score >= 2:
+            linked.append(case["complaint_id"])
+
+    return linked
