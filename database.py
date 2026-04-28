@@ -4,7 +4,6 @@ import bcrypt
 DB = "complaints.db"
 
 
-# ---------------- DB INIT ----------------
 def create_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -16,58 +15,48 @@ def create_db():
     )''')
 
     c.execute('''CREATE TABLE IF NOT EXISTS complaints (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        complaint_id TEXT,
+        complaint_id TEXT PRIMARY KEY,
         username TEXT,
         title TEXT,
         description TEXT,
         location TEXT,
         fraud_type TEXT,
         priority TEXT,
-        jurisdiction TEXT,
-        status TEXT DEFAULT 'Pending'
+        timestamp TEXT
     )''')
 
     conn.commit()
     conn.close()
 
 
-# ---------------- PASSWORD ----------------
-def hash_password(pw):
-    return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode("utf-8")
-
-
-def check_password(pw, hashed):
-    return bcrypt.checkpw(pw.encode(), hashed.encode("utf-8"))
-
-
-# ---------------- USER SYSTEM (FIXED) ----------------
-def add_user(username, password, role):
+# ---------------- AUTH FIXED ----------------
+def add_user(u, p, r):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
     try:
-        c.execute("INSERT INTO users VALUES (?, ?, ?)",
-                  (username, hash_password(password), role))
+        hashed = bcrypt.hashpw(p.encode(), bcrypt.gensalt()).decode()
+        c.execute("INSERT INTO users VALUES (?, ?, ?)", (u, hashed, r))
         conn.commit()
-        return "SUCCESS"
+        return True
 
     except sqlite3.IntegrityError:
-        return "USER_EXISTS"
+        return False
 
     finally:
         conn.close()
 
 
-def validate_user(username, password):
+def validate_user(u, p):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute("SELECT * FROM users WHERE username=?", (username,))
+    c.execute("SELECT * FROM users WHERE username=?", (u,))
     user = c.fetchone()
+
     conn.close()
 
-    if user and check_password(password, user[1]):
+    if user and bcrypt.checkpw(p.encode(), user[1].encode()):
         return user
 
     return None
