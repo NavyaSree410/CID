@@ -2,5 +2,4 @@ streamlit
 pandas
 plotly
 bcrypt
-fpdf2
-geocoder
+fpdf
