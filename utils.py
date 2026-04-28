@@ -2,10 +2,10 @@ import random
 
 HIGH_RISK = ["OTP Fraud", "Banking Fraud", "Crypto Scam"]
 
-FOREIGN_SIGNALS = [
+FOREIGN_SIGNS = [
     "gmail.com", "facebook.com", "instagram.com",
-    "telegram", "binance", "bitcoin", "cloudflare",
-    "paypal", "amazon", "apple id"
+    "telegram", "binance", "bitcoin", "paypal",
+    "cloudflare", "amazon", "apple id"
 ]
 
 
@@ -20,8 +20,8 @@ def detect_priority(fraud_type):
 def detect_jurisdiction(text):
     text = text.lower()
 
-    for word in FOREIGN_SIGNALS:
-        if word in text:
+    for i in FOREIGN_SIGNS:
+        if i in text:
             return "INTERNATIONAL (MLAT REQUIRED)"
 
     return "LOCAL CASE"
