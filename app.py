@@ -1,154 +1,139 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
-import plotly.express as px
+from datetime import datetime
 
 from database import create_db, add_user, validate_user
-from utils import generate_complaint_id, detect_priority, detect_jurisdiction
+from utils import generate_id, priority, find_similar
+from blockchain import add_block
 from mlat import generate_mlat
 
 
-# ---------------- UI ----------------
-st.set_page_config(page_title="C3IS System", layout="wide")
+st.set_page_config(page_title="C3IS BLOCKCHAIN", layout="wide")
 
+# 🔥 HACKER UI
 st.markdown("""
 <style>
 .stApp {
-    background: linear-gradient(120deg, #0f2027, #203a43, #2c5364);
-    color: white;
+    background: black;
+    color: #00ff88;
+    font-family: monospace;
 }
+
+h1, h2, h3 {
+    color: #00ff88;
+}
+
+.stButton>button {
+    background: #00ff88;
+    color: black;
+    font-weight: bold;
+    border-radius: 10px;
+}
+
 </style>
 """, unsafe_allow_html=True)
-
 
 create_db()
 
 
-# ---------------- SESSION ----------------
 if "user" not in st.session_state:
     st.session_state.user = None
-    st.session_state.role = None
 
 
-# ---------------- AUTH UI (FIXED) ----------------
+# ---------------- AUTH ----------------
 def auth():
-    st.title("🔐 C3IS Cyber Crime System")
+    st.title("⚡ C3IS BLOCKCHAIN SYSTEM")
 
-    mode = st.radio("Choose Action", ["Login", "Register"])
+    mode = st.radio("Mode", ["LOGIN", "REGISTER"])
 
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    role = st.selectbox("Role", ["user", "admin"])
+    u = st.text_input("USER ID")
+    p = st.text_input("PASSWORD", type="password")
+    r = st.selectbox("ROLE", ["user", "admin"])
 
-    if mode == "Register":
-        if st.button("Register"):
-            result = add_user(username, password, role)
-
-            if result == "SUCCESS":
-                st.success("User Registered Successfully")
+    if mode == "REGISTER":
+        if st.button("REGISTER"):
+            if add_user(u, p, r):
+                st.success("REGISTERED")
             else:
-                st.error("Username already exists")
+                st.error("USER ALREADY EXISTS")
 
-    if mode == "Login":
-        if st.button("Login"):
-            user = validate_user(username, password)
-
+    if mode == "LOGIN":
+        if st.button("LOGIN"):
+            user = validate_user(u, p)
             if user:
-                st.session_state.user = username
-                st.session_state.role = role
-                st.success("Login Successful")
+                st.session_state.user = u
+                st.success("ACCESS GRANTED")
                 st.rerun()
             else:
-                st.error("Invalid Credentials")
+                st.error("ACCESS DENIED")
 
 
 # ---------------- USER ----------------
 def user_panel():
-    st.header("📢 Submit Complaint")
+    st.header("📡 REPORT CYBER INCIDENT")
 
-    title = st.text_input("Title")
-    desc = st.text_area("Description")
-    location = st.text_input("Location")
+    title = st.text_input("TITLE")
+    desc = st.text_area("DESCRIPTION")
+    location = st.text_input("LOCATION")
 
-    fraud_type = st.selectbox("Fraud Type", [
-        "UPI Fraud",
-        "OTP Fraud",
-        "Banking Fraud",
-        "Crypto Scam",
-        "Fake Job Scam"
+    fraud = st.selectbox("TYPE", [
+        "UPI Fraud", "OTP Fraud", "Banking Fraud",
+        "Crypto Scam", "Fake Job Scam"
     ])
 
-    if st.button("Submit"):
-        cid = generate_complaint_id()
-        priority = detect_priority(fraud_type)
-        jurisdiction = detect_jurisdiction(desc)
+    if st.button("SUBMIT"):
+        cid = generate_id()
+        pr = priority(fraud)
+
+        block_data = {
+            "complaint_id": cid,
+            "user": st.session_state.user,
+            "desc": desc,
+            "time": str(datetime.now())
+        }
+
+        add_block(block_data)
 
         conn = sqlite3.connect("complaints.db")
         c = conn.cursor()
 
-        c.execute('''INSERT INTO complaints
-        (complaint_id, username, title, description, location, fraud_type, priority, jurisdiction)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-        (cid, st.session_state.user, title, desc, location, fraud_type, priority, jurisdiction))
+        c.execute('''INSERT INTO complaints VALUES (?,?,?,?,?,?,?,?)''',
+                  (cid, st.session_state.user, title, desc, location, fraud, pr, str(datetime.now())))
 
         conn.commit()
         conn.close()
 
-        st.success(f"Complaint Registered: {cid}")
+        st.success(f"LOGGED IN BLOCKCHAIN: {cid}")
 
 
 # ---------------- ADMIN ----------------
 def admin_panel():
-    st.header("🛡 Intelligence Dashboard")
+    st.header("🧠 INTELLIGENCE DASHBOARD")
 
     conn = sqlite3.connect("complaints.db")
     df = pd.read_sql_query("SELECT * FROM complaints", conn)
 
-    st.metric("Total Cases", len(df))
-    st.metric("High Risk", len(df[df["priority"] == "HIGH"]))
-    st.metric("International", len(df[df["jurisdiction"].str.contains("INTERNATIONAL")]))
+    st.metric("TOTAL CASES", len(df))
 
-    st.subheader("Fraud Analysis")
-    st.plotly_chart(px.histogram(df, x="fraud_type", color="priority"))
+    st.dataframe(df)
 
-    st.subheader("Location Insights")
-    st.plotly_chart(px.bar(df, x="location", color="fraud_type"))
+    st.subheader("FRAUD ANALYTICS")
+    st.bar_chart(df["fraud_type"].value_counts())
 
-    st.subheader("Jurisdiction Distribution")
-    st.plotly_chart(px.pie(df, names="jurisdiction"))
-
-    st.subheader("Case Status Update")
-
-    cid = st.text_input("Complaint ID")
-    status = st.selectbox("Status", ["Pending", "Under Investigation", "Resolved"])
-
-    if st.button("Update"):
-        c = conn.cursor()
-        c.execute("UPDATE complaints SET status=? WHERE complaint_id=?",
-                  (status, cid))
-        conn.commit()
-        st.success("Updated")
-
-    st.subheader("MLAT Generator")
-
-    if st.button("Generate MLAT Report"):
-        if not df.empty:
-            case = df.iloc[0].to_dict()
-            file = generate_mlat(case)
-            st.success(f"MLAT Created: {file}")
+    if st.button("GENERATE MLAT"):
+        file = generate_mlat(df.iloc[0].to_dict())
+        st.success(file)
 
 
 # ---------------- ROUTER ----------------
 if st.session_state.user is None:
     auth()
 else:
-    st.sidebar.write(f"Logged in as: {st.session_state.user}")
+    st.sidebar.write(f"USER: {st.session_state.user}")
 
-    if st.sidebar.button("Logout"):
+    if st.sidebar.button("LOGOUT"):
         st.session_state.user = None
         st.rerun()
 
-    if st.session_state.role == "user":
-        user_panel()
-    else:
-        admin_panel()
+    user_panel() if st.session_state.user != "admin" else admin_panel()
