@@ -1,10 +1,8 @@
 alerts = []
 
-
-def trigger_alert(case_id, location, unit):
+def trigger_alert(case_id, location):
     alerts.append({
         "case_id": case_id,
         "location": location,
-        "unit": unit,
-        "status": "ACTIVE"
+        "status": "ACTIVE MLAT ALERT"
     })
