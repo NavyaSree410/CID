@@ -1,17 +1,15 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+from datetime import datetime
 
 from db import init_db, insert_case, fetch_cases, get_case
 from auth import login, register
 from ml_engine import detect_jurisdiction
 from alert import trigger_alert, alerts
 from blockchain import add_block
-from mlat import generate
 from utils import generate_case_id
 
-
-st.set_page_config("C3IS MLAT SYSTEM", layout="wide")
+st.set_page_config("MLAT SYSTEM", layout="wide")
 
 init_db()
 
@@ -21,20 +19,19 @@ if "user" not in st.session_state:
 
 # ---------------- AUTH ----------------
 def auth():
-    st.title("🛡 C3IS MLAT SYSTEM")
+    st.title("🛡 MLAT SYSTEM")
 
     mode = st.radio("Mode", ["LOGIN", "REGISTER"])
 
     u = st.text_input("Username")
     p = st.text_input("Password", type="password")
-    r = st.selectbox("Role", ["user", "admin"])
 
     if mode == "REGISTER":
         if st.button("Register"):
-            if register(u, p, r):
+            if register(u, p):
                 st.success("Registered")
             else:
-                st.error("Failed")
+                st.error("User exists")
 
     if mode == "LOGIN":
         if st.button("Login"):
@@ -47,70 +44,74 @@ def auth():
 
 # ---------------- USER ----------------
 def user():
-    st.header("📥 Report Cybercrime")
+    st.header("📥 Submit Case")
 
     title = st.text_input("Title")
     desc = st.text_area("Description")
     location = st.text_input("Location")
 
-    fraud = st.selectbox("Fraud Type", ["OTP Fraud", "Banking Fraud", "Crypto Scam"])
+    fraud = st.selectbox("Fraud Type", ["OTP", "Bank", "Crypto"])
 
     if st.button("Submit Case"):
         cid = generate_case_id()
 
         jurisdiction = detect_jurisdiction(desc)
 
-        police = "Cyber Cell HQ"
+        # ✅ SHOW MLAT RESULT (IMPORTANT FIX)
+        st.info(f"🧠 MLAT RESULT: {jurisdiction}")
 
         if "INTERNATIONAL" in jurisdiction:
-            trigger_alert(cid, location, police)
+            trigger_alert(cid, location)
+            st.warning("🚨 ALERT TRIGGERED")
 
-        data = (cid, st.session_state.user, title, desc, location, fraud, jurisdiction, str(pd.Timestamp.now()))
+        data = (
+            cid,
+            st.session_state.user,
+            title,
+            desc,
+            location,
+            fraud,
+            jurisdiction,
+            str(datetime.now())
+        )
 
         insert_case(data)
-
-        add_block({"case": cid, "desc": desc})
+        add_block(data)
 
         st.success(f"Case Created: {cid}")
 
 
 # ---------------- ADMIN ----------------
 def admin():
-    st.header("🧠 MLAT INTELLIGENCE DASHBOARD")
+    st.header("📊 DASHBOARD")
 
-    data = fetch_cases()
-    df = pd.DataFrame(data, columns=[
-        "case_id","user","title","desc","location","fraud","jurisdiction","time"
+    df = pd.DataFrame(fetch_cases(), columns=[
+        "case_id","user","title","desc","location",
+        "fraud","jurisdiction","time"
     ])
 
     st.metric("Total Cases", len(df))
 
-    st.subheader("Cases")
     st.dataframe(df)
 
     st.subheader("Fraud Graph")
     st.bar_chart(df["fraud"].value_counts())
 
+    st.subheader("Location Graph")
+    st.bar_chart(df["location"].value_counts())
+
     st.subheader("Jurisdiction Graph")
     st.bar_chart(df["jurisdiction"].value_counts())
 
-    st.subheader("🚨 ACTIVE MLAT ALERTS")
+    st.subheader("🚨 Alerts")
     st.write(alerts)
 
     st.subheader("🔎 Search Case")
 
-    cid = st.text_input("Case ID")
+    cid = st.text_input("Enter Case ID")
 
     if st.button("Search"):
-        res = get_case(cid)
-        st.write(res)
-
-    st.subheader("📄 MLAT Report")
-
-    if st.button("Generate Report"):
-        if len(df) > 0:
-            file = generate(df.iloc[-1])
-            st.success(file)
+        st.write(get_case(cid))
 
 
 # ---------------- ROUTER ----------------
