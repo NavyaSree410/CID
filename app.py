@@ -7,9 +7,10 @@ from auth import login, register
 from ml_engine import detect_jurisdiction
 from alert import trigger_alert, alerts
 from blockchain import add_block
+from mlat import generate
 from utils import generate_case_id
 
-st.set_page_config("MLAT SYSTEM", layout="wide")
+st.set_page_config("C3IS MLAT SYSTEM", layout="wide")
 
 init_db()
 
@@ -19,7 +20,7 @@ if "user" not in st.session_state:
 
 # ---------------- AUTH ----------------
 def auth():
-    st.title("🛡 MLAT SYSTEM")
+    st.title("🛡 MLAT CYBER SYSTEM")
 
     mode = st.radio("Mode", ["LOGIN", "REGISTER"])
 
@@ -44,12 +45,11 @@ def auth():
 
 # ---------------- USER ----------------
 def user():
-    st.header("📥 Submit Case")
+    st.header("📥 Submit Cybercrime Case")
 
     title = st.text_input("Title")
     desc = st.text_area("Description")
     location = st.text_input("Location")
-
     fraud = st.selectbox("Fraud Type", ["OTP", "Bank", "Crypto"])
 
     if st.button("Submit Case"):
@@ -57,12 +57,26 @@ def user():
 
         jurisdiction = detect_jurisdiction(desc)
 
-        # ✅ SHOW MLAT RESULT (IMPORTANT FIX)
+        # 🔥 SHOW MLAT OUTPUT (FIXED)
         st.info(f"🧠 MLAT RESULT: {jurisdiction}")
 
         if "INTERNATIONAL" in jurisdiction:
             trigger_alert(cid, location)
-            st.warning("🚨 ALERT TRIGGERED")
+            st.warning("🚨 MLAT ALERT TRIGGERED")
+
+            # 🔥 AUTO REPORT
+            report = {
+                "case_id": cid,
+                "user": st.session_state.user,
+                "title": title,
+                "description": desc,
+                "location": location,
+                "fraud": fraud,
+                "jurisdiction": jurisdiction
+            }
+
+            file = generate(report)
+            st.success(f"📄 MLAT REPORT GENERATED: {file}")
 
         data = (
             cid,
@@ -83,9 +97,17 @@ def user():
 
 # ---------------- ADMIN ----------------
 def admin():
-    st.header("📊 DASHBOARD")
+    st.header("📊 CYBER INTELLIGENCE DASHBOARD")
 
-    df = pd.DataFrame(fetch_cases(), columns=[
+    st.autorefresh(interval=3000)
+
+    data = fetch_cases()
+
+    if len(data) == 0:
+        st.warning("No cases found")
+        return
+
+    df = pd.DataFrame(data, columns=[
         "case_id","user","title","desc","location",
         "fraud","jurisdiction","time"
     ])
@@ -94,21 +116,23 @@ def admin():
 
     st.dataframe(df)
 
-    st.subheader("Fraud Graph")
+    # 📊 GRAPHS (FIXED)
+    st.subheader("Fraud Analysis")
     st.bar_chart(df["fraud"].value_counts())
 
-    st.subheader("Location Graph")
+    st.subheader("Location Analysis")
     st.bar_chart(df["location"].value_counts())
 
-    st.subheader("Jurisdiction Graph")
+    st.subheader("Jurisdiction Analysis")
     st.bar_chart(df["jurisdiction"].value_counts())
 
-    st.subheader("🚨 Alerts")
+    # 🚨 ALERTS
+    st.subheader("Active MLAT Alerts")
     st.write(alerts)
 
-    st.subheader("🔎 Search Case")
-
-    cid = st.text_input("Enter Case ID")
+    # 🔎 SEARCH
+    st.subheader("Search Case")
+    cid = st.text_input("Case ID")
 
     if st.button("Search"):
         st.write(get_case(cid))
