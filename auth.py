@@ -25,7 +25,6 @@ def login(u, p):
 
     c.execute("SELECT * FROM users WHERE username=?", (u,))
     user = c.fetchone()
-
     conn.close()
 
     if user and bcrypt.checkpw(p.encode(), user[1].encode()):
