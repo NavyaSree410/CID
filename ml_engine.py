@@ -1,8 +1,10 @@
 def detect_jurisdiction(text):
-    signals = ["gmail", "facebook", "paypal", "bitcoin", "binance", "server", "cloud"]
+    keywords = ["gmail", "facebook", "paypal", "bitcoin", "server", "binance"]
 
-    for s in signals:
-        if s in text.lower():
+    text = text.lower()
+
+    for k in keywords:
+        if k in text:
             return "INTERNATIONAL (MLAT REQUIRED)"
 
     return "LOCAL (INDIA)"
