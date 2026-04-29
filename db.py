@@ -2,31 +2,20 @@ import sqlite3
 
 DB = "cases.db"
 
-
 def init_db():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        username TEXT PRIMARY KEY,
-        password TEXT,
-        role TEXT
-    )
-    """)
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS cases (
+    c.execute("""CREATE TABLE IF NOT EXISTS cases (
         case_id TEXT PRIMARY KEY,
-        username TEXT,
+        user TEXT,
         title TEXT,
         description TEXT,
         location TEXT,
-        fraud_type TEXT,
+        fraud TEXT,
         jurisdiction TEXT,
-        timestamp TEXT
-    )
-    """)
+        time TEXT
+    )""")
 
     conn.commit()
     conn.close()
@@ -56,5 +45,3 @@ def get_case(cid):
     row = c.fetchone()
     conn.close()
     return row
-
-
