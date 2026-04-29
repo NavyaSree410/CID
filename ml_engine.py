@@ -1,7 +1,7 @@
 def detect_jurisdiction(text):
-    keywords = ["gmail", "facebook", "paypal", "bitcoin", "server", "binance"]
-
     text = text.lower()
+
+    keywords = ["paypal", "bitcoin", "server", "gmail", "binance"]
 
     for k in keywords:
         if k in text:
