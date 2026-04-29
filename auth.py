@@ -1,33 +1,17 @@
-import sqlite3
 import bcrypt
 
-DB = "cases.db"
+users = {}
 
-
-def register(u, p, r):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-
-    try:
-        hashed = bcrypt.hashpw(p.encode(), bcrypt.gensalt()).decode()
-        c.execute("INSERT INTO users VALUES (?,?,?)", (u, hashed, r))
-        conn.commit()
-        return True
-    except:
+def register(u, p):
+    if u in users:
         return False
-    finally:
-        conn.close()
+
+    users[u] = bcrypt.hashpw(p.encode(), bcrypt.gensalt())
+    return True
 
 
 def login(u, p):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
+    if u not in users:
+        return False
 
-    c.execute("SELECT * FROM users WHERE username=?", (u,))
-    user = c.fetchone()
-    conn.close()
-
-    if user and bcrypt.checkpw(p.encode(), user[1].encode()):
-        return True
-
-    return False
+    return bcrypt.checkpw(p.encode(), users[u])
